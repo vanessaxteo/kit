@@ -1,0 +1,24 @@
+{
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal agent skills for Claude Code and Codex — work log and PR/Linear linking",
+  "bin": {
+    "agent-skills": "bin/install.js"
+  },
+  "files": [
+    "bin",
+    "pr-linear",
+    "daily-summary",
+    "weekly-summary",
+    "fill-weekly-summaries"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vanessaxteo/skills.git"
+  }
+}
