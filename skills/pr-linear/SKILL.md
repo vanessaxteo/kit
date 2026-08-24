@@ -1,16 +1,17 @@
 ---
 name: pr-linear
-description: Link every GitHub pull request to a Linear ticket. Run BEFORE `gh pr create` (draft or ready, any repo) — reuses an existing Linear ticket when one covers the work, otherwise creates one, so the PR body carries a `Closes` line from the moment it exists. Also handles existing PRs post-hoc when the user says "make a ticket for this PR", "linear ticket for this", or invokes `/pr-linear [pr-url]`.
+description: Link GitHub pull requests to Linear tickets. Run before `gh pr create`; use quick mode when the user asks for a "quick PR" to create the PR first, then create and link its Linear ticket. Also handles existing PRs post-hoc when the user asks for a Linear ticket.
 user-invocable: true
 ---
 
 # PR → Linear Ticket
 
-Every PR gets a Linear ticket tracking it, cross-linked both ways. Ticket first, PR
-second: find or create the ticket before `gh pr create` so `Closes <ID>` ships in the
-initial PR body — no follow-up `gh pr edit`, no window where the PR exists unticketed.
-An existing ticket covering the work is always reused, never duplicated. One ticket per
-PR; a multi-repo/stacked batch gets one ticket per PR (same flow, repeated).
+By default, every PR gets a Linear ticket tracking it, cross-linked both ways. Ticket
+first, PR second: find or create the ticket before `gh pr create` so `Closes <ID>`
+ships in the initial PR body — no follow-up `gh pr edit`, no window where the PR exists
+unticketed. An existing ticket covering the work is always reused, never duplicated.
+Quick mode is the explicit exception: it creates the PR first, then creates and links
+the ticket afterward.
 
 ## Linear access
 
@@ -26,6 +27,26 @@ S=~/.agents/skills/pr-linear/scripts
 
 If it reports no token: one-time `npx -y mcp-remote https://mcp.linear.app/mcp`
 (complete the browser login, then Ctrl+C). Never fall back to browser automation.
+
+## Quick mode
+
+Use quick mode only when the user explicitly asks for a "quick PR", "quick pr", or
+"quick pull request". It is an opt-in shortcut for small changes, not the default.
+
+1. Create the PR immediately, without a `Closes` line. Do not search Linear, load
+   config, or create a ticket before the PR URL exists.
+2. After creating the PR, look only in the branch name, PR title, and conversation for
+   a Linear identifier (`[A-Z][A-Z0-9]+-[0-9]+`) or a `linear.app` issue link. If one
+   is present, reuse that ticket. Otherwise load config and create a ticket with the
+   PR title, a 1–2 sentence summary, `assignee: "me"`, configured state and priority,
+   and the PR link in `links`.
+3. Append `Closes <ID>` to the PR body using the ticket identifier from step 2. Attach
+   the PR link to a reused ticket with `save_issue` if it is not already attached.
+4. If ticket creation or linking fails, leave the PR open and report the failure with
+   the re-auth hint; never claim the ticket was created.
+
+Quick mode applies only while creating a new PR. `/pr-linear [pr-url]` always uses the
+existing-PR flow below.
 
 ## Config — `~/.config/skills/pr-linear.json` (or `~/.claude/pr-linear.json`)
 
@@ -112,11 +133,13 @@ Run this flow INSTEAD of a bare `gh pr create`, in this order:
 
 ## Rules
 
-- Never create a duplicate ticket (the existing-ticket check is mandatory, not
-  optional). But never guess-attach either: reuse requires a clear match, and a wrong
-  `Closes` line would auto-close an unrelated ticket on merge.
-- Ticket failure never blocks the PR. In the new-PR flow, if `save_issue` fails, create
-  the PR anyway (without a `Closes` line), report the failure explicitly with the
-  re-auth hint, and note it can be retried later with `/pr-linear <pr-url>`. Never
-  claim success on a failed creation.
+- In the default flow, never create a duplicate ticket (the existing-ticket check is
+  mandatory, not optional). In quick mode, reuse only a ticket explicitly identified
+  in context; otherwise create a new ticket after the PR. In either mode, never
+  guess-attach: a wrong `Closes` line would auto-close an unrelated ticket on merge.
+- Ticket failure never blocks the PR. In the default flow, if `save_issue` fails,
+  create the PR anyway (without a `Closes` line). In quick mode, leave the already
+  created PR unlinked. Report the failure explicitly with the re-auth hint and note it
+  can be retried later with `/pr-linear <pr-url>`. Never claim success on a failed
+  creation.
 - The only user interaction allowed is the first-run team pick.
