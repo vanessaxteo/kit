@@ -1,6 +1,6 @@
 ---
 name: pr-linear
-description: Link GitHub pull requests to Linear tickets. Run before `gh pr create`; use quick mode when the user asks for a "quick PR" to skip Linear lookups and ticket creation, linking only an explicitly identified ticket. Also handles existing PRs post-hoc when the user asks for a Linear ticket.
+description: Link GitHub pull requests to Linear tickets. Run before `gh pr create`; use quick mode when the user asks for a "quick PR" to create the PR first, then create and link its Linear ticket. Also handles existing PRs post-hoc when the user asks for a Linear ticket.
 user-invocable: true
 ---
 
@@ -10,7 +10,8 @@ By default, every PR gets a Linear ticket tracking it, cross-linked both ways. T
 first, PR second: find or create the ticket before `gh pr create` so `Closes <ID>`
 ships in the initial PR body — no follow-up `gh pr edit`, no window where the PR exists
 unticketed. An existing ticket covering the work is always reused, never duplicated.
-Quick mode is the explicit exception: it creates no ticket and makes no Linear calls.
+Quick mode is the explicit exception: it creates the PR first, then creates and links
+the ticket afterward.
 
 ## Linear access
 
@@ -32,14 +33,17 @@ If it reports no token: one-time `npx -y mcp-remote https://mcp.linear.app/mcp`
 Use quick mode only when the user explicitly asks for a "quick PR", "quick pr", or
 "quick pull request". It is an opt-in shortcut for small changes, not the default.
 
-1. Look only in the branch name, proposed PR title, and conversation for a Linear
-   identifier (`[A-Z][A-Z0-9]+-[0-9]+`) or a `linear.app` issue link. Do not call
-   Linear, read config, search tickets, create tickets, or attach links.
-2. If an identifier is present, create the PR with `Closes <ID>` as the last line of
-   its initial body. If no identifier is present, create the PR without a `Closes`
-   line. Do not create a ticket.
-3. Report the PR URL and whether it was linked to an existing ticket or intentionally
-   created without one.
+1. Create the PR immediately, without a `Closes` line. Do not search Linear, load
+   config, or create a ticket before the PR URL exists.
+2. After creating the PR, look only in the branch name, PR title, and conversation for
+   a Linear identifier (`[A-Z][A-Z0-9]+-[0-9]+`) or a `linear.app` issue link. If one
+   is present, reuse that ticket. Otherwise load config and create a ticket with the
+   PR title, a 1–2 sentence summary, `assignee: "me"`, configured state and priority,
+   and the PR link in `links`.
+3. Append `Closes <ID>` to the PR body using the ticket identifier from step 2. Attach
+   the PR link to a reused ticket with `save_issue` if it is not already attached.
+4. If ticket creation or linking fails, leave the PR open and report the failure with
+   the re-auth hint; never claim the ticket was created.
 
 Quick mode applies only while creating a new PR. `/pr-linear [pr-url]` always uses the
 existing-PR flow below.
@@ -130,10 +134,12 @@ Run this flow INSTEAD of a bare `gh pr create`, in this order:
 ## Rules
 
 - In the default flow, never create a duplicate ticket (the existing-ticket check is
-  mandatory, not optional). In either mode, never guess-attach: a wrong `Closes` line
-  would auto-close an unrelated ticket on merge.
-- Ticket failure never blocks the PR. In the new-PR flow, if `save_issue` fails, create
-  the PR anyway (without a `Closes` line), report the failure explicitly with the
-  re-auth hint, and note it can be retried later with `/pr-linear <pr-url>`. Never
-  claim success on a failed creation.
+  mandatory, not optional). In quick mode, reuse only a ticket explicitly identified
+  in context; otherwise create a new ticket after the PR. In either mode, never
+  guess-attach: a wrong `Closes` line would auto-close an unrelated ticket on merge.
+- Ticket failure never blocks the PR. In the default flow, if `save_issue` fails,
+  create the PR anyway (without a `Closes` line). In quick mode, leave the already
+  created PR unlinked. Report the failure explicitly with the re-auth hint and note it
+  can be retried later with `/pr-linear <pr-url>`. Never claim success on a failed
+  creation.
 - The only user interaction allowed is the first-run team pick.
