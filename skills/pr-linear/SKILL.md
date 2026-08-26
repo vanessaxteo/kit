@@ -42,8 +42,8 @@ Use quick mode only when the user explicitly asks for a "quick PR", "quick pr", 
    and the PR link in `links`.
 3. Append `Closes <ID>` to the PR body using the ticket identifier from step 2, with a
    real blank line before it. Use `gh pr edit --body-file` for the updated body; never
-   pass literal `\\n` escape sequences to `--body`. Attach the PR link to a reused
-   ticket with `save_issue` if it is not already attached.
+   pass literal `\\n` escape sequences to `--body`. For a reused ticket, do not make a
+   link-only `save_issue` update; the closing reference provides the cross-link.
 4. If ticket creation or linking fails, leave the PR open and report the failure with
    the re-auth hint; never claim the ticket was created.
 
@@ -110,9 +110,9 @@ Run this flow INSTEAD of a bare `gh pr create`, in this order:
    `gh pr create`. `Closes` is a Linear magic word: the GitHub integration attaches the
    PR and moves the ticket to Done on merge. Use the bare identifier instead if
    auto-close is ever unwanted for a given PR.
-5. **Attach the PR link to the ticket** — `save_issue` again with the ticket `id` and
-   `links: [{ "url": "<pr-url>", "title": "PR #<num>: <PR title>" }]`. Non-fatal if this
-   fails: the magic word already attaches the PR via the GitHub integration.
+5. **Rely on the closing reference for the cross-link.** Do not update an existing
+   ticket with `save_issue` and `links` after PR creation; the GitHub integration
+   attaches the PR from `Closes <ID>`.
 6. **Report** one line per PR: `ABC-123 <ticket-url> ← <pr-url>`.
 
 ## Steps — existing PR (`/pr-linear [pr-url]`, or a PR that slipped through)
@@ -121,7 +121,7 @@ Run this flow INSTEAD of a bare `gh pr create`, in this order:
    `gh repo view --json nameWithOwner -q .nameWithOwner`.
 2. **Existing-ticket check** as above, against branch name, PR title, PR body, and a
    Linear search. On a match, ensure the body references it (append `Closes <ID>` if
-   absent), attach the PR link to that ticket, and report "using existing: <ID>".
+   absent) and report "using existing: <ID>".
 3. **Load config and create the ticket** as in the new-PR flow, but include the
    `links` attachment with the PR URL directly in the `save_issue` call.
 4. **Cross-link the PR** — append to the body, preserving existing content:
@@ -146,4 +146,6 @@ Run this flow INSTEAD of a bare `gh pr create`, in this order:
   creation.
 - PR bodies must use real line breaks. Never send a literal `\\n` sequence to GitHub;
   use `--body-file` when an existing body needs a closing line appended.
+- Do not use `save_issue` solely to add a PR link to an existing ticket. New tickets
+  may receive `links` during creation; otherwise the `Closes` reference cross-links.
 - The only user interaction allowed is the first-run team pick.
