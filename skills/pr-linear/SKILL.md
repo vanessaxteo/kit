@@ -40,8 +40,10 @@ Use quick mode only when the user explicitly asks for a "quick PR", "quick pr", 
    is present, reuse that ticket. Otherwise load config and create a ticket with the
    PR title, a 1–2 sentence summary, `assignee: "me"`, configured state and priority,
    and the PR link in `links`.
-3. Append `Closes <ID>` to the PR body using the ticket identifier from step 2. Attach
-   the PR link to a reused ticket with `save_issue` if it is not already attached.
+3. Append `Closes <ID>` to the PR body using the ticket identifier from step 2, with a
+   real blank line before it. Use `gh pr edit --body-file` for the updated body; never
+   pass literal `\\n` escape sequences to `--body`. Attach the PR link to a reused
+   ticket with `save_issue` if it is not already attached.
 4. If ticket creation or linking fails, leave the PR open and report the failure with
    the re-auth hint; never claim the ticket was created.
 
@@ -142,4 +144,6 @@ Run this flow INSTEAD of a bare `gh pr create`, in this order:
   created PR unlinked. Report the failure explicitly with the re-auth hint and note it
   can be retried later with `/pr-linear <pr-url>`. Never claim success on a failed
   creation.
+- PR bodies must use real line breaks. Never send a literal `\\n` sequence to GitHub;
+  use `--body-file` when an existing body needs a closing line appended.
 - The only user interaction allowed is the first-run team pick.
